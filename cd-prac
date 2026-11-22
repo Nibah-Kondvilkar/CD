@@ -1,0 +1,1342 @@
+Practical 1
+Aim: Design a program to check given input is identifier, constants, reserved keywords, and operators.
+Expression: int 1a=b+1c 
+Code:
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h> // Added for cleaner, error-free character checking
+
+// Returns 'true' if the character is a DELIMITER.
+bool isDelimiter(char ch)
+{
+    if (ch == ' ' || ch == '+' || ch == '-' || ch == '*' ||
+        ch == '/' || ch == ',' || ch == ';' || ch == '>' ||
+        ch == '<' || ch == '=' || ch == '(' || ch == ')' ||
+        ch == '[' || ch == ']' || ch == '{' || ch == '}')
+        return true;
+    return false;
+}
+
+// Returns 'true' if the character is an OPERATOR.
+bool isOperator(char ch)
+{
+    if (ch == '+' || ch == '-' || ch == '*' ||
+        ch == '/' || ch == '>' || ch == '<' ||
+        ch == '=')
+        return true;
+    return false;
+}
+
+// Returns 'true' if the string is a VALID IDENTIFIER.
+bool validIdentifier(char* str)
+{
+    // First character cannot be a digit or a delimiter
+    if (isdigit(str[0]) || isDelimiter(str[0]))
+        return false;
+
+    // Remaining characters must be alphanumeric or underscore
+    int len = strlen(str);
+    for (int i = 1; i < len; i++) {
+        if (!isalnum(str[i]) && str[i] != '_')
+            return false;
+    }
+    return true;
+}
+
+// Returns 'true' if the string is a KEYWORD.
+bool isKeyword(char* str)
+{
+    if (!strcmp(str, "if") || !strcmp(str, "else") ||
+        !strcmp(str, "while") || !strcmp(str, "do") ||
+        !strcmp(str, "break") || !strcmp(str, "continue") ||
+        !strcmp(str, "int") || !strcmp(str, "double") ||
+        !strcmp(str, "float") || !strcmp(str, "return") ||
+        !strcmp(str, "char") || !strcmp(str, "case") ||
+        !strcmp(str, "sizeof") || !strcmp(str, "long") ||
+        !strcmp(str, "short") || !strcmp(str, "typedef") ||
+        !strcmp(str, "switch") || !strcmp(str, "unsigned") ||
+        !strcmp(str, "void") || !strcmp(str, "static") ||
+        !strcmp(str, "struct") || !strcmp(str, "goto"))
+        return true;
+    return false;
+}
+// Returns 'true' if the string is an INTEGER.
+bool isInteger(char* str)
+{
+    int len = strlen(str);
+    if (len == 0) return false;
+
+    for (int i = 0; i < len; i++) {
+        // Allow negative numbers if '-' is at index 0
+        if (i == 0 && str[i] == '-' && len > 1) continue;
+        if (!isdigit(str[i])) return false;
+    }
+    return true;
+}
+// Returns 'true' if the string is a REAL NUMBER.
+bool isRealNumber(char* str)
+{
+    int len = strlen(str);
+    bool hasDecimal = false;
+    if (len == 0) return false;
+
+    for (int i = 0; i < len; i++) {
+        if (i == 0 && str[i] == '-' && len > 1) continue;
+
+        if (str[i] == '.') {
+            if (hasDecimal) return false; // More than one decimal point is invalid
+            hasDecimal = true;
+        } else if (!isdigit(str[i])) {
+            return false;
+        }
+    }
+    return hasDecimal;
+}
+// Extracts the SUBSTRING.
+char* subString(char* str, int left, int right)
+{
+    char* subStr = (char*)malloc(sizeof(char) * (right - left + 2));
+    for (int i = left; i <= right; i++)
+        subStr[i - left] = str[i];
+    subStr[right - left + 1] = '\0';
+    return subStr;
+}
+
+// Parsing the input STRING.
+void parse(char* str)
+{
+    int left = 0, right = 0;
+    int len = strlen(str);
+
+    while (right <= len && left <= right) {
+        if (isDelimiter(str[right]) == false)
+            right++;
+
+        if (isDelimiter(str[right]) == true && left == right) {
+            if (isOperator(str[right]) == true)
+                printf("'%c' IS AN OPERATOR\n", str[right]);
+
+            right++;
+            left = right;
+        }
+        else if ((isDelimiter(str[right]) == true && left != right)
+                   || (right == len && left != right)) {
+            char* subStr = subString(str, left, right - 1);
+
+            if (isKeyword(subStr) == true)
+                printf("'%s' IS A KEYWORD\n", subStr);
+
+            else if (isInteger(subStr) == true)
+                printf("'%s' IS AN INTEGER\n", subStr);
+
+            else if (isRealNumber(subStr) == true)
+                printf("'%s' IS A REAL NUMBER\n", subStr);
+
+            else if (validIdentifier(subStr) == true
+                     && isDelimiter(str[right - 1]) == false)
+                printf("'%s' IS A VALID IDENTIFIER\n", subStr);
+
+            else if (validIdentifier(subStr) == false
+                     && isDelimiter(str[right - 1]) == false)
+                printf("'%s' IS NOT A VALID IDENTIFIER\n", subStr);
+
+            free(subStr); // FIX: Freed allocated memory to prevent memory leak
+            left = right;
+        }
+    }
+}
+// DRIVER FUNCTION
+int main()
+{
+    char str[100] = "int 1a = b + 1c; ";
+
+    printf("--- Lexical Analyzer Output ---\n");
+    parse(str);
+    return 0;
+}
+
+
+--------------------------------------------------------------------
+Practical 2 
+  Aim: Design a lexical analyzer to recognize the token defined by the given program
+same as practical 1
+
+
+ ---------------------------------------------------------------- 
+Practical 3
+Aim: Design a program to minimize the given DFA.
+Code:
+#include <stdio.h>
+#include <stdbool.h>
+#define MAX_STATES 20
+#define MAX_SYMBOLS 10
+
+int nStates, nSymbols, nFinal;
+int transition[MAX_STATES][MAX_SYMBOLS];
+int finalStates[MAX_STATES];
+bool isFinal[MAX_STATES] = {false};
+
+// Tracks which group ID each state currently belongs to
+int groupID[MAX_STATES];
+int nextGroupID[MAX_STATES];
+
+// Step 1: Initialize the first partition P0
+void initializePartition() {
+    for (int i = 0; i < nFinal; i++) {
+        isFinal[finalStates[i]] = true;
+    }
+
+    // P0: Group 0 = Non-final states, Group 1 = Final states P = { {0,1,3}, {2,4} }
+    for (int i = 0; i < nStates; i++) {
+        if (isFinal[i]) {
+            groupID[i] = 1;//final
+        } else {
+            groupID[i] = 0;//non final
+        }
+    }
+}
+
+// Step 2 & 3: Refine partitions iteratively
+void refinePartitions() {
+    bool changed;
+
+    do {
+        changed = false;
+        int newGroupCount = 0;
+
+        // Temporarily clear/reset tracking for the next pass
+        for (int i = 0; i < nStates; i++) {
+            nextGroupID[i] = -1;
+        }
+
+        for (int i = 0; i < nStates; i++) {
+            if (nextGroupID[i] != -1) continue; // Already assigned a group in this pass
+
+            // State 'i' starts a brand new group in the refined partition
+            nextGroupID[i] = newGroupCount;
+
+            // Check all subsequent states to see if they behave identically to state 'i'
+            for (int j = i + 1; j < nStates; j++) {
+                if (nextGroupID[j] != -1) continue;
+
+                // Condition 1: They must belong to the same group in the *previous* partition
+                if (groupID[i] == groupID[j]) {
+                    bool behavesIdentically = true;
+
+                    // Condition 2: Their destinations must land in the same historical groups
+                    for (int s = 0; s < nSymbols; s++) {
+                        int destI = transition[i][s];
+                        int destJ = transition[j][s];
+
+                        if (groupID[destI] != groupID[destJ]) {
+                            behavesIdentically = false; // They split up!
+                            break;
+                        }
+                    }
+
+                    if (behavesIdentically) {
+                        nextGroupID[j] = newGroupCount;
+                    }
+                }
+            }
+            newGroupCount++;
+        }
+        // Check if the partition layout actually changed from the last iteration
+        for (int i = 0; i < nStates; i++) {
+            if (groupID[i] != nextGroupID[i]) {
+                changed = true;
+            }
+            groupID[i] = nextGroupID[i]; // Update to the new partitions
+        }
+
+    } while (changed); // Loop breaks when P_(k+1) == P_k
+}
+
+// Step 4: Output the permanently merged state blocks
+void printMinimizedDFA() {
+    printf("\n--- Minimized DFA Equivalent States ---\n");
+    bool visited[MAX_STATES] = {false};
+
+    for (int i = 0; i < nStates; i++) {
+        if (visited[i]) continue;
+
+        printf("{ %d", i);
+        visited[i] = true;
+
+        for (int j = i + 1; j < nStates; j++) {
+            if (groupID[i] == groupID[j]) {
+                printf(", %d", j);
+                visited[j] = true;
+            }
+        }
+        printf(" }\n");
+    }
+}
+
+int main() {
+    printf("Enter number of states: ");
+    scanf("%d", &nStates);
+
+    printf("Enter number of input symbols: ");
+    scanf("%d", &nSymbols);
+
+    printf("Enter transition table (State x Symbol):\n");
+    for (int i = 0; i < nStates; i++) {
+        for (int j = 0; j < nSymbols; j++) {
+            printf("Transition for state %d on symbol %d: ", i, j);
+            scanf("%d", &transition[i][j]);
+        }
+    }
+
+    printf("Enter number of final states: ");
+    scanf("%d", &nFinal);
+
+    printf("Enter final states: ");
+    for (int i = 0; i < nFinal; i++) {
+        scanf("%d", &finalStates[i]);
+    }
+
+    initializePartition();
+    refinePartitions();
+    printMinimizedDFA();
+
+    return 0;
+}
+
+-------------------------------------------------------------------------------------
+Practical 4
+Aim: Design a program to eliminate left recursion
+Code:
+//Design a program to eliminate left recursion
+#include <stdio.h>
+#include <string.h>
+
+int main() {
+    char production[100];
+    char non_terminal;
+    char alpha[10][10], beta[10][10];
+    int alpha_count = 0, beta_count = 0;
+
+    printf("Enter production rule (e.g., E->E+T|T): ");
+    if (scanf("%99s", production) != 1) {
+        printf("Error reading input.\n");
+        return 1;
+    }
+
+    // The first character is the non-terminal variable
+    non_terminal = production[0];
+
+    // Validate structural position of "->"
+    if (production[1] != '-' || production[2] != '>') {
+        printf("Invalid production format. Use '->'\n");
+        return 1;
+    }
+
+    // Parse the right hand side using production string slicing
+    // Start tokenizing from index 3 (after the "->")
+    char *rhs = production + 3;
+    char *token = strtok(rhs, "|");
+
+    while (token != NULL) {
+        // If the token starts with the parent non-terminal, it's left recursive (alpha)
+        if (token[0] == non_terminal) {
+            strcpy(alpha[alpha_count], token + 1); // Store everything after the non-terminal
+            alpha_count++;
+        } else {
+            // Otherwise, it's a non-left-recursive alternative (beta)
+            strcpy(beta[beta_count], token);
+            beta_count++;
+        }
+        token = strtok(NULL, "|");
+    }
+
+    // Output the results
+    if (alpha_count == 0) {
+        printf("\nThe grammar does not contain immediate left recursion.\n");
+    } else {
+        printf("\n--- Grammars after eliminating Left Recursion ---\n");
+
+        // Print the revised A rules
+        printf("%c -> ", non_terminal);
+        for (int i = 0; i < beta_count; i++) {
+            printf("%s%c'", beta[i], non_terminal);
+            if (i < beta_count - 1) printf(" | ");
+        }
+        printf("\n");
+
+        // Print the new A' rules
+        printf("%c' -> ", non_terminal);
+        for (int i = 0; i < alpha_count; i++) {
+            printf("%s%c' | ", alpha[i], non_terminal);
+        }
+        printf("e\n"); // 'e' represents epsilon (empty string)
+    }
+
+    return 0;
+}
+
+
+--------------------------------------
+  Practical 5
+Aim: Design a program for first and follow
+Code:
+/* FIRST and FOLLOW sets - simple C program
+   Input format: one production per line, with no spaces in RHS.
+   Use | for alternatives only by entering each alternative separately.
+   Example:
+       E TX
+       X +TX
+       X e
+       T FY
+       Y *FY
+       Y e
+       F (E)
+       F i
+       # #
+   Here e represents epsilon.
+   Uppercase letters are non-terminals; other characters are terminals.
+*/
+
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_PROD 50
+#define MAX_LEN  50
+
+char lhs[MAX_PROD];
+char rhs[MAX_PROD][MAX_LEN];
+int n = 0;
+
+/* Set membership is stored by character code. */
+int firstSet[128][128];//firstSet['F']['i'] = 1;  i belongs FIRST(F)
+int followSet[128][128];//followSet['E'][')'] = 1;  ) belongs FOLLOW(E)
+int used[128];
+
+int isNT(char c) {
+    return isupper((unsigned char)c);//returns a nonzero value when c is uppercase and zero otherwise.
+}
+
+void readGrammar(void) {
+    char left[20], right[MAX_LEN];
+    int i;
+/*E TX
+left = "E"
+right = "TX"*/
+    printf("Enter each production as: LHS RHS\n");
+    printf("Example: E TX\n");
+    printf("Enter e for epsilon and # # to finish.\n\n");
+
+    while (n < MAX_PROD && scanf("%19s %49s", left, right) == 2) {
+        if (strcmp(left, "#") == 0 && strcmp(right, "#") == 0)
+            break;
+/*//The LHS must contain exactly one character.For example, E is accepted, but Expr is rejected.
+The LHS must be uppercase.
+The ! operator means logical NOT.
+For example, lowercase e is rejected as an LHS.
+The RHS must not be empty.
+If any condition is true, the production is rejected.
+The continue statement skips the rest of the current loop iteration and reads the next production.*/
+        if (strlen(left) != 1 || !isNT(left[0]) || right[0] == '\0') {
+            printf("Invalid production. LHS must be one uppercase letter.\n");
+            continue;
+        }
+
+        lhs[n] = left[0];//E TX lhs[0] = 'E'
+        strcpy(rhs[n], right);//rhs[0] = "TX"
+        used[(unsigned char)left[0]] = 1;//used['E'] = 1;
+
+        for (i = 0; right[i] != '\0'; i++)//+TX -- +, T, X
+            if (right[i] != 'e')
+                used[(unsigned char)right[i]] = 1;
+
+        n++;
+    }
+}
+
+/* Add FIRST of one symbol to FIRST of a non-terminal.
+   Returns 1 if any new item was added. */
+int addFirst(char A, char symbol) {
+    unsigned char a = (unsigned char)A;//A = 'E' symbol = 'i'
+    unsigned char s = (unsigned char)symbol;
+
+    if (!firstSet[a][s]) {//firstSet['E']['i']
+        firstSet[a][s] = 1;
+        return 1;
+    }
+    return 0;
+}
+
+void calculateFirst(void) {
+    /*changed: indicates whether a FIRST set changed during the current pass.
+i: indexes productions.
+j: indexes characters in an RHS.
+allNullable: tracks whether all relevant RHS symbols can derive epsilon.
+A: the current LHS non-terminal.
+r: a pointer to the current RHS string.*/
+    int changed = 1, i, j, allNullable;
+    char A, *r;
+    while (changed) {
+        changed = 0;//Whenever a new FIRST-set member is added, the program sets changed to a nonzero value.
+
+        for (i = 0; i < n; i++) {//F → i
+            A = lhs[i];
+            r = rhs[i];//A = 'F' r = "i"
+
+            /* Production A -> e */
+            if (strcmp(r, "e") == 0) {
+                changed |= addFirst(A, 'e');//FIRST(X) = { e }
+                continue;
+            }
+            allNullable = 1;
+            /*Initially assumes that all symbols in the RHS can derive epsilon.
+If the program encounters a terminal or a non-nullable non-terminal, it changes allNullable to 0.
+This variable helps determine whether the entire RHS can derive epsilon.*/
+
+            /* Examine RHS from left to right. */
+            for (j = 0; r[j] != '\0'; j++) {//E → TX  T X
+                char X = r[j];//X → +TX first RHS character is +, which is a terminal.
+                if (!isNT(X)) {
+                    changed |= addFirst(A, X);
+                    allNullable = 0;//indicates that the entire RHS cannot derive epsilon through this position because a terminal cannot disappear.
+                    break;
+                }
+
+                /* Add FIRST(X), except epsilon, to FIRST(A). handles the case where X is a non-terminal.*/
+                {
+                    int t;
+                    /*Checks two conditions:
+1. The symbol is not epsilon.
+2. The symbol belongs to FIRST(X)*/
+                    for (t = 0; t < 128; t++) {
+                        if (t != 'e' && firstSet[(unsigned char)X][t])
+                            changed |= addFirst(A, (char)t);//FIRST(T) = { (, i } E → TX The program copies ( and i into FIRST(E).
+                    }
+                }
+                /* If X cannot derive epsilon, stop here. If epsilon is absent from FIRST(X), then the current non-terminal cannot disappear.*/
+                if (!firstSet[(unsigned char)X][(unsigned char)'e']) {
+                    allNullable = 0;//and stops examining the remaining RHS symbols.If epsilon is in FIRST(X), the loop continues to the next symbol.
+                    break;
+                }
+            }//E → TX If T cannot derive epsilon, only FIRST(T) contributes to FIRST(E), and the program does not continue to X.If T can derive epsilon, the program also considers FIRST(X).
+
+            /* If every RHS symbol can derive epsilon, A can derive epsilon. */
+            if (allNullable)
+                changed |= addFirst(A, 'e');//X → e FIRST(X) = { e }
+        }//If every symbol in the RHS can derive epsilon, the entire RHS can derive epsilon.Therefore, epsilon is added to FIRST(A)
+    }
+}
+void calculateFollow(void) {
+    int changed = 1, i, j, k, nullable;
+    char start = lhs[0];
+
+    /* End marker belongs to FOLLOW(start symbol). */
+    followSet[(unsigned char)start][(unsigned char)'$'] = 1;
+
+    while (changed) {
+        changed = 0;
+        for (i = 0; i < n; i++) {
+            char A = lhs[i];
+            char *r = rhs[i];
+
+            if (strcmp(r, "e") == 0)
+                continue;
+/*The loop visits every RHS character.
+B stores the current character.
+If B is a terminal, the program skips it because FOLLOW sets are calculated for non-terminals.
+If B is a non-terminal, the program examines what comes after it.*/
+            for (j = 0; r[j] != '\0'; j++) {
+                char B = r[j];
+
+                if (!isNT(B))
+                    continue;
+
+                /* Add FIRST of the suffix after B, excluding epsilon. */
+                nullable = 1;//The program initially assumes that everything after B can derive epsilon.
+
+                for (k = j + 1; r[k] != '\0'; k++) {
+                    char X = r[k];
+
+                    if (!isNT(X)) {
+                        if (X != 'e' &&
+                            !followSet[(unsigned char)B][(unsigned char)X]) {
+                            followSet[(unsigned char)B][(unsigned char)X] = 1;//If X is a terminal, it can be added directly to FOLLOW(B).
+                            changed = 1;
+                        }
+                        nullable = 0;
+                        break;
+                    }
+
+                    {
+                        int t;//This block handles the case where X is a non-terminal.It copies the terminals from FIRST(X) into FOLLOW(B), excluding epsilon.
+                        for (t = 0; t < 128; t++) {
+                            if (t != 'e' && firstSet[(unsigned char)X][t] &&
+                                !followSet[(unsigned char)B][t]) {
+                                followSet[(unsigned char)B][t] = 1;
+                                changed = 1;
+                            }
+                        }
+                    }
+/*If X cannot derive epsilon, the suffix cannot disappear at this position.
+Therefore, the program sets nullable = 0 and stops examining the suffix.
+If X can derive epsilon, the loop continues to the next symbol.
+This is how the program handles productions where one or more non-terminals may derive an empty string.*/
+                    if (!firstSet[(unsigned char)X][(unsigned char)'e']) {
+                        nullable = 0;
+                        break;
+                    }
+                }
+
+                /* If suffix is empty or nullable, add FOLLOW(A) to FOLLOW(B). */
+                if (nullable) {
+                    int t;
+                    for (t = 0; t < 128; t++) {
+                        if (followSet[(unsigned char)A][t] &&
+                            !followSet[(unsigned char)B][t]) {
+                            followSet[(unsigned char)B][t] = 1;
+                            changed = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void printSets(void) {
+    int A, t;
+    printf("\nFIRST sets:\n");
+    for (A = 0; A < 128; A++) {
+        if (used[A] && isNT((char)A)) {
+            printf("FIRST(%c) = { ", A);
+            for (t = 0; t < 128; t++)
+                if (firstSet[A][t])
+                    printf("%c ", t);
+            printf("}\n");
+        }
+    }
+
+    printf("\nFOLLOW sets:\n");
+    for (A = 0; A < 128; A++) {
+        if (used[A] && isNT((char)A)) {
+            printf("FOLLOW(%c) = { ", A);
+            for (t = 0; t < 128; t++)
+                if (followSet[A][t])
+                    printf("%c ", t);
+            printf("}\n");
+        }
+    }
+}
+
+int main(void) {
+    int i, j;
+    readGrammar();
+
+    if (n == 0) {
+        printf("No productions entered.\n");
+        return 1;
+    }
+    calculateFirst();
+    calculateFollow();
+    printSets();
+
+    return 0;
+}
+
+
+
+
+---------------------------------------------
+  Practical 6
+Aim: Design a program to create operator precedence matrix for given production
+Code:
+/* Simple Operator Precedence Matrix (OPM) program
+   Input: one production per line as LHS RHS, e.g. E E+T
+   Finish input with: # #
+   Uppercase letters = non-terminals; other characters = terminals.
+   Supports single-character symbols and no epsilon productions.
+*/
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#define MAX 50
+char lhs[MAX], rhs[MAX][MAX];
+int n = 0;
+int firstVT[128][128], lastVT[128][128];
+char op[128][128];//op['+']['*'] = '<';
+int conflict[128][128], used[128];
+int isNT(char c) {
+    return isupper((unsigned char)c);
+}
+void inputGrammar(void) {
+    char left[20], right[MAX];
+    int i;
+    printf("Enter productions as LHS RHS (example: E E+T)\n");
+    printf("Enter # # to finish.\n");
+    while (n < MAX && scanf("%19s %49s", left, right) == 2) {
+        if (strcmp(left, "#") == 0 && strcmp(right, "#") == 0)
+            break;
+        if (strlen(left) != 1 || !isNT(left[0]) ||
+            strcmp(right, "e") == 0 || strcmp(right, "epsilon") == 0) {
+            printf("Invalid input. Use one uppercase LHS and no epsilon.\n");
+            continue;
+        }
+        lhs[n] = left[0];
+        strcpy(rhs[n], right);
+        used[(unsigned char)left[0]] = 1;
+        for (i = 0; right[i] != '\0'; i++)
+            used[(unsigned char)right[i]] = 1;
+        n++;
+    }
+}
+/* FIRSTVT and LASTVT are repeated until no new symbols are added.
+ FIRSTVT(A): the set of terminals that can occur at the beginning
+ of strings derived from non-terminal A, according to the operator-precedence rules.
+ LASTVT(A): the set of terminals that can occur at the end of strings derived from
+ non-terminal A, according to those rules.
+ E -> E+T
+E -> T
+T -> i
+The terminal + appears immediately after a non-terminal in E -> E+T, so it can be
+added to FIRSTVT(E) using the rules implemented by this program.
+ Also, the terminals found in FIRSTVT(T) are added to FIRSTVT(E) through the production E -> T.*/
+void findFirstLastVT(void) {
+    int change = 1, i, j, len;
+    char A, B, *r;
+    while (change) {
+        change = 0;
+        for (i = 0; i < n; i++) {
+            A = lhs[i];
+            r = rhs[i];
+            len = (int)strlen(r);
+            /* FIRSTVT(A) */
+            /*If the first character on
+            the right-hand side is a terminal,
+             add it to FIRSTVT of the left-hand-side non-terminal.
+             F -> i
+             Since i is a terminal, the program adds it to FIRSTVT(F).*/
+            if (!isNT(r[0])) {
+                if (!firstVT[(unsigned char)A][(unsigned char)r[0]]) {
+                    firstVT[(unsigned char)A][(unsigned char)r[0]] = 1;
+                    change = 1;
+                }
+            } else {
+                B = r[0];//first character is a non-terminal, so the program stores it in B.
+                //E -> E+T The first character is a non-terminal and the second is a terminal. Therefore, + is added to FIRSTVT(E).
+                if (r[1] && !isNT(r[1]) &&//whether the second character exists and is a terminal that has not already been added.
+                    !firstVT[(unsigned char)A][(unsigned char)r[1]]) {
+                    firstVT[(unsigned char)A][(unsigned char)r[1]] = 1;
+                    change = 1;
+                }
+       /*E -> T
+        T -> i
+       Once i is in FIRSTVT(T), the production E -> T allows the program to add i to FIRSTVT(E).
+This is why the loop repeats: the set for T may not have been complete when the program first processed E -> T. */
+                for (j = 0; j < 128; j++)
+                    if (firstVT[(unsigned char)B][j] &&
+                        !firstVT[(unsigned char)A][j]) {
+                        firstVT[(unsigned char)A][j] = 1;
+                        change = 1;
+                    }
+            }
+            /* LASTVT(A) */
+            if (!isNT(r[len - 1])) {
+                if (!lastVT[(unsigned char)A][(unsigned char)r[len - 1]]) {
+                    lastVT[(unsigned char)A][(unsigned char)r[len - 1]] = 1;
+                    change = 1;
+                }
+            } else {
+                B = r[len - 1];
+                if (len > 1 && !isNT(r[len - 2]) &&
+                    !lastVT[(unsigned char)A][(unsigned char)r[len - 2]]) {
+                    lastVT[(unsigned char)A][(unsigned char)r[len - 2]] = 1;
+                    change = 1;
+                }
+                for (j = 0; j < 128; j++)
+                    if (lastVT[(unsigned char)B][j] &&
+                        !lastVT[(unsigned char)A][j]) {
+                        lastVT[(unsigned char)A][j] = 1;
+                        change = 1;
+                    }
+            }
+        }
+    }
+}
+void addRelation(char a, char b, char symbol) {
+    unsigned char x = (unsigned char)a, y = (unsigned char)b;
+    if (op[x][y] == '\0')
+        op[x][y] = symbol;
+    else if (op[x][y] != symbol)
+        conflict[x][y] = 1;
+}
+void makeOPM(char start) {
+    int i, j, t;
+    char *r;
+    int len;
+    for (i = 0; i < n; i++) {
+        r = rhs[i];
+        len = (int)strlen(r);
+        for (j = 0; j < len - 1; j++) {
+            /* Terminal next to terminal: = , A -> a+.. a = +*/
+            if (!isNT(r[j]) && !isNT(r[j + 1]))
+                addRelation(r[j], r[j + 1], '=');
+
+            /* Terminal, non-terminal, terminal: = , F -> (E) ..( = )*/
+            if (j + 2 < len && !isNT(r[j]) &&
+                isNT(r[j + 1]) && !isNT(r[j + 2]))
+                addRelation(r[j], r[j + 2], '=');
+            /* Terminal before non-terminal: < FIRSTVT , A -> aB checks whether
+            character t belongs to FIRSTVT of the non-terminal that follows a, and whether t is a terminal.
+            For example, if + belongs to FIRSTVT(B), the program records:*/
+            if (!isNT(r[j]) && isNT(r[j + 1]))
+                for (t = 0; t < 128; t++)
+                    if (firstVT[(unsigned char)r[j + 1]][t] && !isNT((char)t))
+                        addRelation(r[j], (char)t, '<');
+            /* Non-terminal before terminal: LASTVT > terminal , A -> B+
+            The loop searches for all terminals in LASTVT(B).
+            Suppose i belongs to LASTVT(B). The program records:i > +*/
+            if (isNT(r[j]) && !isNT(r[j + 1]))
+                for (t = 0; t < 128; t++)
+                    if (lastVT[(unsigned char)r[j]][t] && !isNT((char)t))
+                        addRelation((char)t, r[j + 1], '>');
+        }
+    }
+    /* End marker $ */
+    used[(unsigned char)'$'] = 1;
+    for (t = 0; t < 128; t++) {
+        if (firstVT[(unsigned char)start][t] && !isNT((char)t))
+            addRelation('$', (char)t, '<');//for every terminal in FIRSTVT of the start symbol, record $ < terminal.
+        if (lastVT[(unsigned char)start][t] && !isNT((char)t))
+            addRelation((char)t, '$', '>');//for every terminal in LASTVT of the start symbol, record terminal > $.
+    }
+}
+void printSets(void) {
+    int a, t;
+    printf("\nFIRSTVT:\n");
+    for (a = 0; a < 128; a++)
+        if (used[a] && isNT((char)a)) {
+            printf("FIRSTVT(%c) = { ", a);
+            for (t = 0; t < 128; t++)
+                if (firstVT[a][t] && !isNT((char)t)) printf("%c ", t);
+            printf("}\n");
+        }
+    printf("\nLASTVT:\n");
+    for (a = 0; a < 128; a++)
+        if (used[a] && isNT((char)a)) {
+            printf("LASTVT(%c) = { ", a);
+            for (t = 0; t < 128; t++)
+                if (lastVT[a][t] && !isNT((char)t)) printf("%c ", t);
+            printf("}\n");
+        }
+}
+void printOPM(void) {
+    int a, b, bad = 0;
+    printf("\nOperator Precedence Matrix:\n    ");
+    for (b = 0; b < 128; b++)
+        if (used[b] && !isNT((char)b)) printf("%c   ", b);
+    printf("\n");
+    for (a = 0; a < 128; a++)
+        if (used[a] && !isNT((char)a)) {
+            printf("%c   ", a);
+            for (b = 0; b < 128; b++)
+                if (used[b] && !isNT((char)b)) {
+                    if (conflict[a][b]) {
+                        printf("!   ");
+                        bad = 1;
+                    } else if (op[a][b])
+                        printf("%c   ", op[a][b]);
+                    else
+                        printf("-   ");
+                }
+            printf("\n");
+        }
+    if (bad)
+        printf("\n! means conflicting relations: this is not a valid OPG.\n");
+}
+int main(void) {
+    int i, j;
+    inputGrammar();
+    if (n == 0) {
+        printf("No productions entered.\n");
+        return 1;
+    }
+    /* Check the basic OPG restriction: no adjacent non-terminals. */
+    for (i = 0; i < n; i++)
+        for (j = 0; rhs[i][j] && rhs[i][j + 1]; j++)
+            if (isNT(rhs[i][j]) && isNT(rhs[i][j + 1])) {
+                printf("Invalid for this program: adjacent non-terminals in %c -> %s\n",
+                       lhs[i], rhs[i]);
+                return 1;
+            }
+    printf("\nProductions:\n");
+    for (i = 0; i < n; i++)
+        printf("%c -> %s\n", lhs[i], rhs[i]);
+    findFirstLastVT();
+    printSets();
+    makeOPM(lhs[0]);
+    printOPM();
+    return 0;
+}
+
+
+-------------------------------------
+  Practical 7
+Aim: Design a program to convert any expression into Three Address Code.
+Code:
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#define MAX 100
+
+char infix[MAX], postfix[MAX], stack[MAX];//stack-stores operators and opening parentheses during conversion.
+char operands[MAX][MAX];
+//top tracks the top position of the operator stack,
+//ptop tracks the top position of the operands stack used during TAC generation.
+int top = -1, ptop = -1, temp = 1;
+
+int priority(char op)
+{
+    if (op == '*' || op == '/')
+        return 2;
+    if (op == '+' || op == '-')
+        return 1;
+    return 0;//(
+}
+
+void infixToPostfix(char expr[])
+{
+    int i, j = 0;
+    char ch;
+
+    for (i = 0; expr[i] != '\0'; i++)
+    {
+        ch = expr[i];
+
+        if (isalnum((unsigned char)ch))//If it is an operand, it is directly added to the postfix expression.
+            postfix[j++] = ch;//postfix[j] = ch;j++;
+
+        else if (ch == '(')
+            stack[++top] = ch;
+
+        else if (ch == ')')
+        {
+            while (top != -1 && stack[top] != '(')
+                postfix[j++] = stack[top--];
+
+            if (top != -1)
+                top--;
+        }
+        else
+        {
+            while (top != -1 && stack[top] != '(' &&
+                   priority(stack[top]) >= priority(ch))
+                postfix[j++] = stack[top--];
+
+            stack[++top] = ch;
+        }
+    }
+
+    while (top != -1)
+        postfix[j++] = stack[top--];
+
+    postfix[j] = '\0';
+}
+
+void generateTAC(char lhs)
+{
+    int i;
+    char left[MAX], right[MAX], result[MAX];
+
+    for (i = 0; postfix[i] != '\0'; i++)
+    {
+        if (isalnum((unsigned char)postfix[i]))
+        {
+            char value[2] = {postfix[i], '\0'};
+            strcpy(operands[++ptop], value);
+        }
+        else
+        {
+            strcpy(right, operands[ptop--]);
+            strcpy(left, operands[ptop--]);
+
+            sprintf(result, "t%d", temp++);
+
+            printf("%s = %s %c %s\n",
+                   result, left, postfix[i], right);
+            strcpy(operands[++ptop], result);
+        }
+    }
+    printf("%c = %s\n", lhs, operands[ptop]);
+}
+int main(void)
+{
+    char input[MAX];
+    char *equal;
+    char lhs;
+
+    printf("Enter an assignment expression: ");
+    scanf("%99s", input);
+
+    equal = strchr(input, '=');
+
+    if (equal == NULL || equal != input + 1)
+    {
+        printf("Invalid assignment expression.\n");
+        return 1;
+    }
+
+    lhs = input[0];
+
+    infixToPostfix(equal + 1);
+
+    printf("\nPostfix expression: %s\n", postfix);
+    printf("\nThree Address Code:\n");
+
+    generateTAC(lhs);
+    return 0;
+}
+
+
+
+----------------------------------------
+  Practical 8
+Aim: Design a program to demonstrate loop jamming
+Code:	
+#include <stdio.h>
+#include <time.h>
+
+int main()
+{
+    int array1[] = {10, 20, 30};
+    int array2[] = {20, 10, 30};
+    int array3[] = {40, 40, 10};
+
+    clock_t t1, t2, t3;//a data type for storing processor-clock values.
+
+    t1 = clock();
+
+    // Version 1: Loop over each array separately
+    for (int i = 0; i < 10000000; i++)
+    {
+        int sum = 0;
+
+        for (int x = 0; x < 3; x++)
+        {
+            sum += array1[x];
+        }
+
+        for (int x = 0; x < 3; x++)
+        {
+            sum += array2[x];
+        }
+
+        for (int x = 0; x < 3; x++)
+        {
+            sum += array3[x];
+        }
+
+        if (sum != 210)
+        {
+            printf("false\n");
+        }
+    }
+
+    t2 = clock();//obtains a processor-time reading
+
+    // Version 2: Jam the loops together
+    for (int i = 0; i < 10000000; i++)
+    {
+        int sum = 0;
+
+        for (int x = 0; x < 3; x++)
+        {
+            sum += array1[x];
+            sum += array2[x];
+            sum += array3[x];
+        }
+
+        if (sum != 210)
+        {
+            printf("false\n");
+        }
+    }
+
+    t3 = clock();
+
+    // Display execution time in milliseconds
+    printf("Before loop jamming: %.3f ms\n",
+           (double)(t2 - t1) * 1000.0 / CLOCKS_PER_SEC);
+//the number of clock units per second, used to convert the difference into seconds.
+    printf("After loop jamming: %.3f ms\n",
+           (double)(t3 - t2) * 1000.0 / CLOCKS_PER_SEC);
+
+    return 0;
+}
+
+
+-----------------------------
+  Practical 9
+Aim: Design a program to demonstrate loop unrolling
+Code:
+#include <stdio.h>
+#include <time.h>
+int main()
+{
+    int array1[5];
+    clock_t t1, t2, t3;
+    t1 = clock();
+    // Version 1: Assign elements using a loop
+    for (int i = 0; i < 10000000; i++)
+    {
+        for (int x = 0; x < 5; x++)
+        {
+            array1[x] = x;
+        }
+    }
+    t2 = clock();
+    // Version 2: Loop unrolling
+    for (int i = 0; i < 10000000; i++)
+    {
+        array1[0] = 0;
+        array1[1] = 1;
+        array1[2] = 2;
+        array1[3] = 3;
+        array1[4] = 4;
+    }
+    t3 = clock();
+    // Display execution time in milliseconds
+    printf("Time before loop unrolling: %.3f ms\n",
+           (double)(t2 - t1) * 1000.0 / CLOCKS_PER_SEC);
+    printf("Time after loop unrolling: %.3f ms\n",
+           (double)(t3 - t2) * 1000.0 / CLOCKS_PER_SEC);
+    return 0;
+}
+
+
+
+----------------------------
+  Practical 10
+Aim: Design a program that converts the three address code into DAG
+Code:
+#include <stdio.h>
+#include <string.h>
+#define MAX 100
+typedef struct
+{
+    char label[50];//Stores the variable name or names associated with a node.
+    char op;//Stores the operator associated with an expression node.
+    int left;//Stores the node index of the left operand.
+    int right;//Stores the node index of the right operand.
+    char value;//Stores the original character represented by a leaf node
+} Node;
+
+Node nodes[MAX];
+int nodeCount = 0;
+int variable[256];
+
+// Create a leaf node for an original variable value
+int createLeaf(char ch)
+{
+    int id = nodeCount++;
+
+    nodes[id].label[0] = '\0';
+    nodes[id].op = '\0';
+    nodes[id].left = -1;
+    nodes[id].right = -1;
+    nodes[id].value = ch;
+
+    return id;
+}
+
+// Get the current node of a variable
+int getNode(char ch)
+{
+    unsigned char c = (unsigned char)ch;
+
+    if (variable[c] == -1)
+        variable[c] = createLeaf(ch);
+
+    return variable[c];
+}
+
+// Create or reuse an expression node
+int createExpression(char op, int left, int right)
+{
+    int i;
+
+    for (i = 0; i < nodeCount; i++)
+    {
+        if (nodes[i].op == op &&
+            nodes[i].left == left &&
+            nodes[i].right == right)
+        {
+            return i;
+        }
+    }
+
+    int id = nodeCount++;
+
+    nodes[id].label[0] = '\0';
+    nodes[id].op = op;
+    nodes[id].left = left;
+    nodes[id].right = right;
+    nodes[id].value = '\0';
+
+    return id;
+}
+
+// Remove a variable label from its previous node
+void removeLabel(char ch)
+{
+    int i;
+
+    for (i = 0; i < nodeCount; i++)
+    {
+        char result[50] = "";
+        char *token;
+
+        char copy[50];
+        strcpy(copy, nodes[i].label);
+
+        token = strtok(copy, ",");
+
+        while (token != NULL)
+        {
+            if (!(strlen(token) == 1 && token[0] == ch))
+            {
+                if (result[0] != '\0')
+                    strcat(result, ",");
+
+                strcat(result, token);
+            }
+
+            token = strtok(NULL, ",");
+        }
+
+        strcpy(nodes[i].label, result);
+    }
+}
+
+// Assign a variable label to a node
+void assignLabel(int id, char ch)
+{
+    char temp[2] = {ch, '\0'};
+
+    if (nodes[id].label[0] != '\0')
+        strcat(nodes[id].label, ",");
+
+    strcat(nodes[id].label, temp);
+}
+
+// Process a statement such as a=b+c or a=b
+int process(char *s)
+{
+    char lhs, op;
+    int left, right, result;
+
+    if (strlen(s) == 5 && s[1] == '=')
+    {
+        lhs = s[0];
+        op = s[3];
+
+        if (op != '+' && op != '-' &&
+            op != '*' && op != '/')
+            return 0;
+
+        left = getNode(s[2]);//If b already has a node, its node ID is returned. Otherwise, a leaf node for b is created.
+        right = getNode(s[4]);
+
+        result = createExpression(op, left, right);
+    }
+    else if (strlen(s) == 3 && s[1] == '=')
+    {
+        lhs = s[0];
+        result = getNode(s[2]);
+    }
+    else
+    {
+        return 0;
+    }
+
+    removeLabel(lhs);
+    variable[(unsigned char)lhs] = result;
+    assignLabel(result, lhs);
+
+    return 1;
+}
+
+// Display the DAG table
+void displayTable(void)
+{
+    int i;
+
+    printf("\nDAG NODE TABLE\n\n");
+    printf("%-8s %-12s %-10s %-12s %-12s\n",
+           "Node", "Label", "Operator", "Left", "Right");
+
+    for (i = 0; i < nodeCount; i++)
+    {
+        char left[20] = "-";
+        char right[20] = "-";
+        char op[10] = "-";
+
+        if (nodes[i].op != '\0')
+        {
+            sprintf(op, "%c", nodes[i].op);
+            sprintf(left, "N%d", nodes[i].left);
+            sprintf(right, "N%d", nodes[i].right);
+        }
+
+        printf("N%-7d %-12s %-10s %-12s %-12s\n",
+               i,
+               nodes[i].label[0] ? nodes[i].label :
+                   (nodes[i].op == '\0' ?
+                    (char[2]){nodes[i].value, '\0'} : "-"),
+               op, left, right);
+    }
+}
+
+int main(void)
+{
+    char s[100];
+    int i;
+
+    for (i = 0; i < 256; i++)
+        variable[i] = -1;
+
+    printf("Enter three-address statements:\n");
+    printf("Examples: a=b+c, b=a-d\n");
+    printf("Enter q to quit.\n\n");
+
+    while (1)
+    {
+        printf("Enter statement: ");
+
+        if (fgets(s, sizeof(s), stdin) == NULL)
+            break;
+
+        s[strcspn(s, "\n")] = '\0';
+
+        // Remove spaces
+        int j, k = 0;
+        for (j = 0; s[j]; j++)
+            if (s[j] != ' ' && s[j] != '\t')
+                s[k++] = s[j];
+        s[k] = '\0';
+
+        if (strcmp(s, "q") == 0)
+            break;
+
+        if (s[0] == '\0')
+            continue;
+
+        if (!process(s))
+            printf("Invalid statement: %s\n", s);
+    }
+
+    displayTable();
+
+    return 0;
+}
